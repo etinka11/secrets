@@ -5,6 +5,9 @@ const ejs = require('ejs');
 const mongoose = require('mongoose');
 var encrypt = require('mongoose-encryption');
 const app = express();
+//var md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 
 main().catch(err => console.log(err));
@@ -40,18 +43,22 @@ app.get("/register", function(req, res){
 });
 
 app.post("/register", function(req, res){
-  const newUser = new User({
-    email: req.body.username, //getting the data from our HTML page - from the FORM
-    password: req.body.password
-  });
-
-  newUser.save(function(err){
-    if (err){
-      console.log(err);
-    } else {
-      res.render("secrets");
-    }
-  });
+  
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    const newUser = new User({
+      email: req.body.username, //getting the data from our HTML page - from the FORM
+      password: hash 
+    });
+  
+    newUser.save(function(err){
+      if (err){
+        console.log(err);
+      } else {
+        res.render("secrets");
+      }
+    });
+});
+  
 });
 
 app.post("/login", function(req, res){
@@ -73,9 +80,15 @@ it does, the response from the server will be our secret page.
       console.log(err);
     } else {
       if (foundUser) {
-        if (foundUser.password === password) {
-          res.render("secrets"); //pay attention: only after we logged in with exists user, the secrets page will appear.
-        }
+
+        bcrypt.compare(password, foundUser.password, function(err, result) {
+          //this "bcrypt.compare" method will take the "password" the user typed in the login page and compare it with the "foundUser.password" from our database.
+
+            if (result === true){ //if after the comparetion the result is true .aka the same, then render the secrets page.
+            res.render("secrets"); //pay attention: only after we logged in with exists user, the secrets page will appear.
+          }
+      });
+       
       }
     }
   });
